@@ -30,3 +30,5 @@ Si tienes archivos `.fbx`, puedes convertirlos a `.glb` usando:
 - Los bones del avatar deben seguir convenciones estándar (Mixamo, etc.)
 
 
+
+

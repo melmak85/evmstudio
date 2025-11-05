@@ -320,3 +320,5 @@ pnpm dev
 ¿Necesitas ayuda? Revisa `FEATURES.md` para detalles técnicos o `QUICKSTART.md` para solución de problemas.
 
 
+
+

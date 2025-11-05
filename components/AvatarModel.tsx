@@ -20,6 +20,23 @@ export default function AvatarModel({
   // Cargar el modelo base
   const { scene: boyModel } = useGLTF("/models/boy_tpose.glb");
   
+  // Debug: Verificar modelo cargado
+  useEffect(() => {
+    if (boyModel) {
+      console.log("✅ Modelo cargado correctamente");
+      console.log("📦 Tamaño del modelo:", boyModel);
+      // Ajustar sombras y propiedades del modelo
+      boyModel.traverse((child: any) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+    } else {
+      console.warn("⚠️ Modelo no cargado aún");
+    }
+  }, [boyModel]);
+  
   // Cargar todas las animaciones
   const { animations: idleAnimations } = useGLTF("/models/idle_boy.glb");
   const { animations: runAnimations } = useGLTF("/models/run_boy.glb");
@@ -99,7 +116,7 @@ export default function AvatarModel({
     <group ref={groupRef} position={position}>
       <primitive 
         object={boyModel.clone()} 
-        scale={0.01} // Ajustar escala si es necesario
+        scale={1} // Escala normal - ajustar si es necesario
       />
     </group>
   );
