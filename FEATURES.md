@@ -219,3 +219,14 @@ Este callback se dispara cada vez que el personaje entra en una nueva zona.
 
 
 
+
+
+
+
+
+
+
+
+
+
+

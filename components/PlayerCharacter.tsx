@@ -137,16 +137,6 @@ export default function PlayerCharacter({ onSectionChange }: PlayerCharacterProp
         currentAnimation={currentAnimation}
       />
       
-      {/* Placeholder visible si el modelo no carga (para debug) */}
-      <mesh position={[0, 0, 0]} visible={true} castShadow>
-        <boxGeometry args={[0.5, 1, 0.5]} />
-        <meshStandardMaterial 
-          color="#ff6b6b" 
-          transparent
-          opacity={0.3}
-        />
-      </mesh>
-      
       {/* Colisionador invisible (esfera) */}
       <mesh visible={false}>
         <sphereGeometry args={[0.5]} />

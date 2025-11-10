@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useGLTF, useAnimations } from "@react-three/drei";
 import { Group } from "three";
+import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils.js";
 
 interface AvatarModelProps {
   position?: [number, number, number];
@@ -19,23 +20,28 @@ export default function AvatarModel({
   
   // Cargar el modelo base
   const { scene: boyModel } = useGLTF("/models/boy_tpose.glb");
+
+  const clonedModel = useMemo(() => {
+    if (!boyModel) return null;
+    const clone = SkeletonUtils.clone(boyModel);
+    clone.traverse((child: any) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    return clone;
+  }, [boyModel]);
   
   // Debug: Verificar modelo cargado
   useEffect(() => {
-    if (boyModel) {
+    if (clonedModel) {
       console.log("✅ Modelo cargado correctamente");
-      console.log("📦 Tamaño del modelo:", boyModel);
-      // Ajustar sombras y propiedades del modelo
-      boyModel.traverse((child: any) => {
-        if (child.isMesh) {
-          child.castShadow = true;
-          child.receiveShadow = true;
-        }
-      });
+      console.log("📦 Tamaño del modelo:", clonedModel);
     } else {
       console.warn("⚠️ Modelo no cargado aún");
     }
-  }, [boyModel]);
+  }, [clonedModel]);
   
   // Cargar todas las animaciones
   const { animations: idleAnimations } = useGLTF("/models/idle_boy.glb");
@@ -114,10 +120,12 @@ export default function AvatarModel({
   
   return (
     <group ref={groupRef} position={position}>
-      <primitive 
-        object={boyModel.clone()} 
-        scale={1} // Escala normal - ajustar si es necesario
-      />
+      {clonedModel && (
+        <primitive 
+          object={clonedModel} 
+          scale={1} // Ajustar si el modelo se ve muy grande o pequeño
+        />
+      )}
     </group>
   );
 }
