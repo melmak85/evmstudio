@@ -49,7 +49,7 @@ export default function PlayerCharacter({ onSectionChange }: PlayerCharacterProp
     if (keys.a) sideways = -1;
     if (keys.d) sideways = 1;
 
-    const isGrounded = Math.abs(velY) < 0.5 && pos.y <= 1.05;
+    const isGrounded = Math.abs(velY) < 0.4 && pos.y <= 1.05;
     
     if (keys.space && isGrounded && !isJumping) {
       const now = Date.now();
@@ -58,19 +58,18 @@ export default function PlayerCharacter({ onSectionChange }: PlayerCharacterProp
         rigidBodyRef.current.applyImpulse({ x: 0, y: JUMP_FORCE, z: 0 }, true);
         setCurrentAnimation("jump");
         setIsJumping(true);
+        hasLandedRef.current = false;
         lastSpacePress.current = now;
       }
     }
     
-    if (isGrounded && isJumping) {
-      setIsJumping(false);
+    if (!isGrounded && isJumping) {
+      hasLandedRef.current = false;
     }
 
-    if (isGrounded && horizontalSpeed < 0.1) {
-      if (!hasLandedRef.current || currentAnimation !== "idle") {
-        hasLandedRef.current = true;
-        setCurrentAnimation("idle");
-      }
+    if (isJumping && isGrounded && Math.abs(velY) < 0.15) {
+      setIsJumping(false);
+      hasLandedRef.current = true;
     }
 
     // 4. Calcular dirección cruda (relativa a la pantalla)
@@ -79,32 +78,28 @@ export default function PlayerCharacter({ onSectionChange }: PlayerCharacterProp
     
     const isMoving = hasMoveInput && direction.length() > 0;
 
-    if (isMoving) {
+    let nextAnimation: "idle" | "run" | "jump" = currentAnimation;
+
+    if (isJumping || !isGrounded) {
+      nextAnimation = "jump";
+    } else if (isMoving && hasMoveInput) {
       direction.normalize();
-      
-      // 5. Aplicar rotación isométrica
-      // Rotamos el vector de movimiento para que coincida con la vista de la cámara
       direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), ISO_ROTATION_Y);
 
       const velocity = direction.multiplyScalar(SPEED);
       rigidBodyRef.current.setLinvel({ x: velocity.x, y: velY, z: velocity.z }, true);
 
-      // 7. Rotar el modelo para que mire en la dirección del movimiento
       const angle = Math.atan2(direction.x, direction.z);
       setRotation(angle);
-      
-      // 8. Cambiar a animación de correr (si no está saltando)
-      if (!isJumping && hasMoveInput) {
-        setCurrentAnimation("run");
-      }
+
+      nextAnimation = "run";
     } else {
-      // Detener movimiento horizontal si no hay input (mantener velocidad Y)
       rigidBodyRef.current.setLinvel({ x: 0, y: velY, z: 0 }, true);
-      
-      // Cambiar a animación idle (si no está saltando)
-      if (!isJumping && (hasLandedRef.current || !isMoving)) {
-        setCurrentAnimation("idle");
-      }
+      nextAnimation = "idle";
+    }
+
+    if (nextAnimation !== currentAnimation) {
+      setCurrentAnimation(nextAnimation);
     }
     
     // 9. Actualizar posición del modelo visual

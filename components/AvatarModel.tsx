@@ -167,42 +167,42 @@ export default function AvatarModel({
       return false;
     };
 
-    if (currentAnimation === "run") {
-      if (
-        playInOrder([
-          { name: runClipName, fragments: ["run"] },
-          { name: idleClipName, fragments: ["idle", "breath"] },
-        ])
-      ) {
-        return;
-      }
-    } else if (currentAnimation === "jump") {
-      if (
-        playInOrder([
-          { name: jumpClipName, fragments: ["jump"] },
-          { name: idleClipName, fragments: ["idle", "breath"] },
-        ])
-      ) {
-        return;
-      }
-    } else {
-      if (
-        playInOrder([
-          { name: idleClipName, fragments: ["idle", "breath"] },
-          { name: runClipName, fragments: ["run"] },
-          { name: jumpClipName, fragments: ["jump"] },
-        ])
-      ) {
-        return;
-      }
+    const fallbacks = Object.keys(actions).map((key) => ({
+      name: key,
+      fragments: [key.toLowerCase()],
+    }));
+
+    if (currentAnimation === "jump") {
+      if (playInOrder([{ name: jumpClipName, fragments: ["jump"] }])) return;
+      playInOrder([
+        { name: idleClipName, fragments: ["idle", "breath"] },
+        ...fallbacks,
+      ]);
+      return;
     }
 
-    playInOrder(
-      Object.keys(actions).map((key) => ({
-        name: key,
-        fragments: [key.toLowerCase()],
-      }))
-    );
+    if (currentAnimation === "run") {
+      if (playInOrder([{ name: runClipName, fragments: ["run"] }])) return;
+      playInOrder([
+        { name: idleClipName, fragments: ["idle", "breath"] },
+        ...fallbacks,
+      ]);
+      return;
+    }
+
+    if (playInOrder([{ name: idleClipName, fragments: ["idle", "breath"] }])) {
+      return;
+    }
+
+    if (playInOrder([{ name: runClipName, fragments: ["run"] }])) {
+      return;
+    }
+
+    if (playInOrder([{ name: jumpClipName, fragments: ["jump"] }])) {
+      return;
+    }
+
+    playInOrder(fallbacks);
   }, [
     actions,
     mixer,
