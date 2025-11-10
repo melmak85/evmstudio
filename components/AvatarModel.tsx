@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { useGLTF, useAnimations } from "@react-three/drei";
-import { AnimationAction, AnimationClip, Group, LoopRepeat } from "three";
+import { AnimationAction, AnimationClip, Group, LoopOnce, LoopRepeat } from "three";
 import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils.js";
 
 interface AvatarModelProps {
@@ -65,6 +65,7 @@ export default function AvatarModel({
         const cloned = clip.clone();
         const baseName = clip.name && clip.name !== "" ? clip.name : `clip_${index}`;
         cloned.name = `${label}_${baseName}`;
+        cloned.resetDuration();
         return cloned;
       });
 
@@ -131,7 +132,10 @@ export default function AvatarModel({
           : undefined;
 
       if (previousName === name && previousAction) {
-        if (previousAction.paused) {
+        if (name.toLowerCase().startsWith("jump")) {
+          previousAction.reset();
+          previousAction.play();
+        } else if (previousAction.paused) {
           previousAction.paused = false;
           previousAction.play();
         }
@@ -139,14 +143,29 @@ export default function AvatarModel({
       }
 
       nextAction.reset();
-      nextAction.setLoop(LoopRepeat, Infinity);
-      nextAction.clampWhenFinished = false;
+      if (name.toLowerCase().startsWith("jump")) {
+        nextAction.setLoop(LoopOnce, 1);
+        nextAction.clampWhenFinished = true;
+        const clipDuration = nextAction.getClip().duration;
+        const desiredDuration = 2.4;
+        nextAction.timeScale =
+          clipDuration > 0 ? clipDuration / desiredDuration : 1;
+        nextAction.fadeIn(0.05);
+      } else {
+        nextAction.setLoop(LoopRepeat, Infinity);
+        nextAction.clampWhenFinished = false;
+        nextAction.timeScale = 1;
+        nextAction.fadeIn(0.2);
+      }
       nextAction.enabled = true;
       nextAction.paused = false;
       nextAction.play();
 
       if (previousAction && previousAction !== nextAction) {
-        previousAction.crossFadeTo(nextAction, 0.2, false);
+        previousAction.stop();
+        nextAction.play();
+      } else if (!previousAction) {
+        nextAction.play();
       }
 
       activeActionRef.current = name;

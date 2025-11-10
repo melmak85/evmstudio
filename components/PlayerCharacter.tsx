@@ -30,7 +30,9 @@ export default function PlayerCharacter({ onSectionChange }: PlayerCharacterProp
   const lastSpacePress = useRef(0);
   const hasLandedRef = useRef(false);
 
-  useFrame(() => {
+  const lastJumpEndRef = useRef(0);
+
+  useFrame((_, delta) => {
     if (!rigidBodyRef.current) return;
 
     const pos = rigidBodyRef.current.translation();
@@ -54,7 +56,7 @@ export default function PlayerCharacter({ onSectionChange }: PlayerCharacterProp
     if (keys.space && isGrounded && !isJumping) {
       const now = Date.now();
       // Evitar doble salto (cooldown de 500ms)
-      if (now - lastSpacePress.current > 500) {
+      if (now - lastSpacePress.current > 500 && now - lastJumpEndRef.current > 3000) {
         rigidBodyRef.current.applyImpulse({ x: 0, y: JUMP_FORCE, z: 0 }, true);
         setCurrentAnimation("jump");
         setIsJumping(true);
@@ -70,6 +72,7 @@ export default function PlayerCharacter({ onSectionChange }: PlayerCharacterProp
     if (isJumping && isGrounded && Math.abs(velY) < 0.15) {
       setIsJumping(false);
       hasLandedRef.current = true;
+      lastJumpEndRef.current = Date.now();
     }
 
     // 4. Calcular dirección cruda (relativa a la pantalla)
