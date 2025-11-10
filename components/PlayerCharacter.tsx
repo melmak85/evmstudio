@@ -35,7 +35,10 @@ export default function PlayerCharacter({ onSectionChange }: PlayerCharacterProp
 
     const pos = rigidBodyRef.current.translation();
     const vel = rigidBodyRef.current.linvel();
-    const horizontalSpeed = Math.hypot(vel.x, vel.z);
+    const velX = vel.x;
+    const velY = vel.y;
+    const velZ = vel.z;
+    const horizontalSpeed = Math.hypot(velX, velZ);
     
     let forward = 0;
     let sideways = 0;
@@ -46,7 +49,7 @@ export default function PlayerCharacter({ onSectionChange }: PlayerCharacterProp
     if (keys.a) sideways = -1;
     if (keys.d) sideways = 1;
 
-    const isGrounded = Math.abs(vel.y) < 0.5 && pos.y <= 1.05;
+    const isGrounded = Math.abs(velY) < 0.5 && pos.y <= 1.05;
     
     if (keys.space && isGrounded && !isJumping) {
       const now = Date.now();
@@ -84,7 +87,7 @@ export default function PlayerCharacter({ onSectionChange }: PlayerCharacterProp
       direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), ISO_ROTATION_Y);
 
       const velocity = direction.multiplyScalar(SPEED);
-      rigidBodyRef.current.setLinvel({ x: velocity.x, y: vel.y, z: velocity.z }, true);
+      rigidBodyRef.current.setLinvel({ x: velocity.x, y: velY, z: velocity.z }, true);
 
       // 7. Rotar el modelo para que mire en la dirección del movimiento
       const angle = Math.atan2(direction.x, direction.z);
@@ -96,7 +99,7 @@ export default function PlayerCharacter({ onSectionChange }: PlayerCharacterProp
       }
     } else {
       // Detener movimiento horizontal si no hay input (mantener velocidad Y)
-      rigidBodyRef.current.setLinvel({ x: 0, y: vel.y, z: 0 }, true);
+      rigidBodyRef.current.setLinvel({ x: 0, y: velY, z: 0 }, true);
       
       // Cambiar a animación idle (si no está saltando)
       if (!isJumping && (hasLandedRef.current || !isMoving)) {

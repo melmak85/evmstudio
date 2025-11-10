@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { useGLTF, useAnimations } from "@react-three/drei";
-import { AnimationAction, Group, LoopRepeat } from "three";
+import { AnimationAction, AnimationClip, Group, LoopRepeat } from "three";
 import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils.js";
 
 interface AvatarModelProps {
@@ -56,44 +56,38 @@ export default function AvatarModel({
   const { animations: runAnimations } = useGLTF("/models/run_boy.glb");
   const { animations: jumpAnimations } = useGLTF("/models/jump.glb");
 
-  const allAnimations = useMemo(
-    () => [
-      ...(idleAnimations ?? []),
-      ...(runAnimations ?? []),
-      ...(jumpAnimations ?? []),
-    ],
-    [idleAnimations, runAnimations, jumpAnimations]
-  );
+  const allAnimations = useMemo(() => {
+    const remapClips = (
+      clips: AnimationClip[] | undefined,
+      label: string
+    ) =>
+      (clips ?? []).map((clip, index) => {
+        const cloned = clip.clone();
+        const baseName = clip.name && clip.name !== "" ? clip.name : `clip_${index}`;
+        cloned.name = `${label}_${baseName}`;
+        return cloned;
+      });
+
+    return [
+      ...remapClips(idleAnimations, "idle"),
+      ...remapClips(runAnimations, "run"),
+      ...remapClips(jumpAnimations, "jump"),
+    ];
+  }, [idleAnimations, runAnimations, jumpAnimations]);
   
   // Hook de animaciones
   const { actions, mixer } = useAnimations(allAnimations, modelRef);
 
-  const resolveClipName = (
-    fragments: string[],
-    fallbacks: (string | undefined)[] = []
-  ) => {
-    const lowerFragments = fragments.map((fragment) => fragment.toLowerCase());
-
-    const byFragment = allAnimations.find((clip) =>
-      lowerFragments.some((fragment) =>
-        clip.name.toLowerCase().includes(fragment)
-      )
-    )?.name;
-
-    return (
-      byFragment ??
-      fallbacks.find(
-        (name) => name && allAnimations.some((clip) => clip.name === name)
-      )
+  const resolveClipName = (prefix: string) => {
+    const entry = allAnimations.find((clip) =>
+      clip.name.toLowerCase().startsWith(prefix.toLowerCase())
     );
+    return entry?.name;
   };
 
-  const idleClipName = resolveClipName(["idle", "breath"], [
-    idleAnimations?.[0]?.name,
-    allAnimations[0]?.name,
-  ]);
-  const runClipName = resolveClipName(["run"], [runAnimations?.[0]?.name]);
-  const jumpClipName = resolveClipName(["jump"], [jumpAnimations?.[0]?.name]);
+  const idleClipName = resolveClipName("idle");
+  const runClipName = resolveClipName("run");
+  const jumpClipName = resolveClipName("jump");
   
   // Debug: Mostrar animaciones cargadas (solo una vez)
   useEffect(() => {
