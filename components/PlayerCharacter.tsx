@@ -44,8 +44,8 @@ export default function PlayerCharacter({ onSectionChange }: PlayerCharacterProp
     let sideways = 0;
 
     // 1. Obtener intención de movimiento del usuario
-    if (keys.w) forward = 1;
-    if (keys.s) forward = -1;
+    if (keys.w) forward = -1;
+    if (keys.s) forward = 1;
     if (keys.a) sideways = -1;
     if (keys.d) sideways = 1;
 
