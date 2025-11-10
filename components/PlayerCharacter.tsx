@@ -12,7 +12,7 @@ import { ZONES, SectionType } from "@/types/zones";
 const SPEED = 5;
 const JUMP_FORCE = 8;
 const ISO_ROTATION_Y = Math.PI / 4; // 45 grados para vista isométrica
-const MODEL_VISUAL_OFFSET_Y = 0.55;
+const MODEL_VISUAL_OFFSET_Y = -0.7;
 
 interface PlayerCharacterProps {
   onSectionChange?: (section: SectionType) => void;

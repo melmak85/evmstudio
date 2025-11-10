@@ -13,7 +13,7 @@ interface AvatarModelProps {
 }
 
 export default function AvatarModel({ 
-  position = [0, 0, 0], 
+  position = [0, , 0], 
   rotation = 0,
   visualOffsetY = 0,
   currentAnimation = "idle" 
