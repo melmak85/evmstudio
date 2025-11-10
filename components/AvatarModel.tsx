@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { useGLTF, useAnimations } from "@react-three/drei";
-import { Group } from "three";
+import { AnimationAction, Group, LoopRepeat } from "three";
 import * as SkeletonUtils from "three/examples/jsm/utils/SkeletonUtils.js";
 
 interface AvatarModelProps {
@@ -13,7 +13,7 @@ interface AvatarModelProps {
 }
 
 export default function AvatarModel({ 
-  position = [0, , 0], 
+  position = [0, 0, 0], 
   rotation = 0,
   visualOffsetY = 0,
   currentAnimation = "idle" 
@@ -22,6 +22,7 @@ export default function AvatarModel({
 
   const groupRef = useRef<Group>(null);
   const modelRef = useRef<Group>(null);
+  const activeActionRef = useRef<string | null>(null);
   
   // Cargar el modelo base
   const { scene: boyModel } = useGLTF("/models/boy_tpose.glb");
@@ -115,57 +116,99 @@ export default function AvatarModel({
 
     const findAction = (clipName?: string, fragments: string[] = []) => {
       if (!actions) return undefined;
-      if (clipName && actions[clipName]) return actions[clipName];
+      if (clipName && actions[clipName]) {
+        return { name: clipName, action: actions[clipName] as AnimationAction };
+      }
 
       const key = Object.keys(actions).find((key) =>
         fragments.some((fragment) => key.toLowerCase().includes(fragment))
       );
 
-      return key ? actions[key] : undefined;
+      return key && actions[key]
+        ? { name: key, action: actions[key] as AnimationAction }
+        : undefined;
+    };
+
+    const startAction = (name: string, nextAction: AnimationAction) => {
+      const previousName = activeActionRef.current;
+      const previousAction =
+        previousName && actions?.[previousName]
+          ? (actions[previousName] as AnimationAction)
+          : undefined;
+
+      if (previousName === name && previousAction) {
+        if (previousAction.paused) {
+          previousAction.paused = false;
+          previousAction.play();
+        }
+        return true;
+      }
+
+      nextAction.reset();
+      nextAction.setLoop(LoopRepeat, Infinity);
+      nextAction.clampWhenFinished = false;
+      nextAction.enabled = true;
+      nextAction.paused = false;
+      nextAction.play();
+
+      if (previousAction && previousAction !== nextAction) {
+        previousAction.crossFadeTo(nextAction, 0.2, false);
+      }
+
+      activeActionRef.current = name;
+      return true;
     };
 
     const playInOrder = (
       candidates: Array<{ name?: string; fragments: string[] }>
     ) => {
       for (const candidate of candidates) {
-        const action = findAction(candidate.name, candidate.fragments);
-        if (action) {
-          mixer.stopAllAction();
-          action.reset().fadeIn(0.2).play();
+        const result = findAction(candidate.name, candidate.fragments);
+        if (result) {
+          const { name, action } = result;
+          startAction(name, action);
           return true;
         }
       }
       return false;
     };
 
-    const played =
-      playInOrder(
-        currentAnimation === "run"
-          ? [
-              { name: runClipName, fragments: ["run"] },
-              { name: idleClipName, fragments: ["idle", "breath"] },
-            ]
-          : currentAnimation === "jump"
-            ? [
-                { name: jumpClipName, fragments: ["jump"] },
-                { name: idleClipName, fragments: ["idle", "breath"] },
-              ]
-            : [
-                { name: idleClipName, fragments: ["idle", "breath"] },
-                { name: runClipName, fragments: ["run"] },
-                { name: jumpClipName, fragments: ["jump"] },
-              ]
-      ) ||
-      playInOrder(
-        Object.keys(actions).map((key) => ({
-          name: key,
-          fragments: [key.toLowerCase()],
-        }))
-      );
-
-    if (!played) {
-      console.warn("No se encontró una animación para reproducir.");
+    if (currentAnimation === "run") {
+      if (
+        playInOrder([
+          { name: runClipName, fragments: ["run"] },
+          { name: idleClipName, fragments: ["idle", "breath"] },
+        ])
+      ) {
+        return;
+      }
+    } else if (currentAnimation === "jump") {
+      if (
+        playInOrder([
+          { name: jumpClipName, fragments: ["jump"] },
+          { name: idleClipName, fragments: ["idle", "breath"] },
+        ])
+      ) {
+        return;
+      }
+    } else {
+      if (
+        playInOrder([
+          { name: idleClipName, fragments: ["idle", "breath"] },
+          { name: runClipName, fragments: ["run"] },
+          { name: jumpClipName, fragments: ["jump"] },
+        ])
+      ) {
+        return;
+      }
     }
+
+    playInOrder(
+      Object.keys(actions).map((key) => ({
+        name: key,
+        fragments: [key.toLowerCase()],
+      }))
+    );
   }, [
     actions,
     mixer,

@@ -12,7 +12,7 @@ import { ZONES, SectionType } from "@/types/zones";
 const SPEED = 5;
 const JUMP_FORCE = 8;
 const ISO_ROTATION_Y = Math.PI / 4; // 45 grados para vista isométrica
-const MODEL_VISUAL_OFFSET_Y = -0.7;
+const MODEL_VISUAL_OFFSET_Y = -0.8;
 
 interface PlayerCharacterProps {
   onSectionChange?: (section: SectionType) => void;
@@ -21,18 +21,21 @@ interface PlayerCharacterProps {
 export default function PlayerCharacter({ onSectionChange }: PlayerCharacterProps) {
   const keys = useKeyboardControls();
   const rigidBodyRef = useRef<RapierRigidBody>(null);
-  const [currentAnimation, setCurrentAnimation] = useState<"idle" | "run" | "jump">("idle");
+  const [currentAnimation, setCurrentAnimation] =
+    useState<"idle" | "run" | "jump">("idle");
   const [rotation, setRotation] = useState(0);
   const [position, setPosition] = useState<[number, number, number]>([0, 0, 0]);
   const [isJumping, setIsJumping] = useState(false);
   const [currentSection, setCurrentSection] = useState<SectionType>("Principal");
   const lastSpacePress = useRef(0);
+  const hasLandedRef = useRef(false);
 
   useFrame(() => {
     if (!rigidBodyRef.current) return;
 
     const pos = rigidBodyRef.current.translation();
     const vel = rigidBodyRef.current.linvel();
+    const horizontalSpeed = Math.hypot(vel.x, vel.z);
     
     let forward = 0;
     let sideways = 0;
@@ -43,10 +46,8 @@ export default function PlayerCharacter({ onSectionChange }: PlayerCharacterProp
     if (keys.a) sideways = -1;
     if (keys.d) sideways = 1;
 
-    // 2. Detectar si está en el suelo (para permitir salto)
-    const isGrounded = Math.abs(vel.y) < 0.5 && pos.y < 1.5;
+    const isGrounded = Math.abs(vel.y) < 0.5 && pos.y <= 1.05;
     
-    // 3. Manejar salto
     if (keys.space && isGrounded && !isJumping) {
       const now = Date.now();
       // Evitar doble salto (cooldown de 500ms)
@@ -58,22 +59,30 @@ export default function PlayerCharacter({ onSectionChange }: PlayerCharacterProp
       }
     }
     
-    // Resetear estado de salto cuando toca el suelo
     if (isGrounded && isJumping) {
       setIsJumping(false);
     }
 
+    if (isGrounded && horizontalSpeed < 0.1) {
+      if (!hasLandedRef.current || currentAnimation !== "idle") {
+        hasLandedRef.current = true;
+        setCurrentAnimation("idle");
+      }
+    }
+
     // 4. Calcular dirección cruda (relativa a la pantalla)
     const direction = new THREE.Vector3(sideways, 0, forward);
+    const hasMoveInput = forward !== 0 || sideways !== 0;
     
-    if (direction.length() > 0) {
+    const isMoving = hasMoveInput && direction.length() > 0;
+
+    if (isMoving) {
       direction.normalize();
       
       // 5. Aplicar rotación isométrica
       // Rotamos el vector de movimiento para que coincida con la vista de la cámara
       direction.applyAxisAngle(new THREE.Vector3(0, 1, 0), ISO_ROTATION_Y);
 
-      // 6. Aplicar velocidad al cuerpo de física (mantener velocidad Y)
       const velocity = direction.multiplyScalar(SPEED);
       rigidBodyRef.current.setLinvel({ x: velocity.x, y: vel.y, z: velocity.z }, true);
 
@@ -82,7 +91,7 @@ export default function PlayerCharacter({ onSectionChange }: PlayerCharacterProp
       setRotation(angle);
       
       // 8. Cambiar a animación de correr (si no está saltando)
-      if (!isJumping) {
+      if (!isJumping && hasMoveInput) {
         setCurrentAnimation("run");
       }
     } else {
@@ -90,7 +99,7 @@ export default function PlayerCharacter({ onSectionChange }: PlayerCharacterProp
       rigidBodyRef.current.setLinvel({ x: 0, y: vel.y, z: 0 }, true);
       
       // Cambiar a animación idle (si no está saltando)
-      if (!isJumping) {
+      if (!isJumping && (hasLandedRef.current || !isMoving)) {
         setCurrentAnimation("idle");
       }
     }
