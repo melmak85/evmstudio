@@ -16,6 +16,9 @@ export default function AvatarModel({
   rotation = 0,
   currentAnimation = "idle" 
 }: AvatarModelProps) {
+  const MODEL_SCALE = 0.3;
+  const MODEL_OFFSET: [number, number, number] = [0, 2, 0];
+
   const groupRef = useRef<Group>(null);
   
   // Cargar el modelo base
@@ -24,6 +27,8 @@ export default function AvatarModel({
   const clonedModel = useMemo(() => {
     if (!boyModel) return null;
     const clone = SkeletonUtils.clone(boyModel);
+    clone.scale.setScalar(MODEL_SCALE);
+    clone.position.set(...MODEL_OFFSET);
     clone.traverse((child: any) => {
       if (child.isMesh) {
         child.castShadow = true;
@@ -123,7 +128,6 @@ export default function AvatarModel({
       {clonedModel && (
         <primitive 
           object={clonedModel} 
-          scale={1} // Ajustar si el modelo se ve muy grande o pequeño
         />
       )}
     </group>
