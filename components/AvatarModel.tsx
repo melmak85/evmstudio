@@ -16,10 +16,11 @@ export default function AvatarModel({
   rotation = 0,
   currentAnimation = "idle" 
 }: AvatarModelProps) {
-  const MODEL_SCALE = 0.3;
-  const MODEL_OFFSET: [number, number, number] = [0, 2, 0];
+  const MODEL_SCALE = 0.5;
+  const MODEL_OFFSET: [number, number, number] = [0, 5, 0];
 
   const groupRef = useRef<Group>(null);
+  const modelRef = useRef<Group>(null);
   
   // Cargar el modelo base
   const { scene: boyModel } = useGLTF("/models/boy_tpose.glb");
@@ -61,7 +62,11 @@ export default function AvatarModel({
   ];
   
   // Hook de animaciones
-  const { actions, mixer } = useAnimations(allAnimations, groupRef);
+  const { actions } = useAnimations(allAnimations, modelRef);
+
+  const idleClipName = idleAnimations[0]?.name;
+  const runClipName = runAnimations[0]?.name;
+  const jumpClipName = jumpAnimations[0]?.name;
   
   // Debug: Mostrar animaciones cargadas (solo una vez)
   useEffect(() => {
@@ -83,38 +88,46 @@ export default function AvatarModel({
     if (!actions) return;
     
     // Detener todas las animaciones actuales
-    Object.values(actions).forEach((action) => {
-      action?.fadeOut(0.3);
-    });
+    Object.values(actions).forEach((action) => action?.fadeOut(0.3));
     
     // Reproducir la nueva animación
     let actionToPlay;
     
+    const findAction = (fragments: string[], fallbackName?: string) => {
+      if (!actions) return undefined;
+      const key = Object.keys(actions).find((key) =>
+        fragments.some((fragment) => key.toLowerCase().includes(fragment))
+      );
+      if (key && actions[key]) {
+        return actions[key];
+      }
+      if (fallbackName && actions[fallbackName]) {
+        return actions[fallbackName];
+      }
+      return undefined;
+    };
+
     switch (currentAnimation) {
       case "run":
-        // Buscar la animación de run (puede tener diferentes nombres)
-        actionToPlay = actions[Object.keys(actions).find(key => 
-          key.toLowerCase().includes('run')
-        ) || ''];
+        actionToPlay = findAction(["run"], runClipName);
         break;
       case "jump":
-        actionToPlay = actions[Object.keys(actions).find(key => 
-          key.toLowerCase().includes('jump')
-        ) || ''];
+        actionToPlay = findAction(["jump"], jumpClipName);
         break;
       case "idle":
       default:
-        actionToPlay = actions[Object.keys(actions).find(key => 
-          key.toLowerCase().includes('idle')
-        ) || ''];
+        actionToPlay = findAction(["idle", "breath"], idleClipName);
         break;
     }
     
-    if (actionToPlay) {
-      actionToPlay.reset().fadeIn(0.3).play();
-    }
+    const fallbackAction =
+      !actionToPlay && idleClipName && actions[idleClipName]
+        ? actions[idleClipName]
+        : Object.values(actions)[0];
+
+    (actionToPlay ?? fallbackAction)?.reset().fadeIn(0.3).play();
     
-  }, [currentAnimation, actions]);
+  }, [currentAnimation, actions, idleClipName, runClipName, jumpClipName]);
   
   // Actualizar rotación
   useEffect(() => {
@@ -127,6 +140,7 @@ export default function AvatarModel({
     <group ref={groupRef} position={position}>
       {clonedModel && (
         <primitive 
+          ref={modelRef}
           object={clonedModel} 
         />
       )}
