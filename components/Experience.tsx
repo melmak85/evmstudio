@@ -30,7 +30,7 @@ export default function Experience({ onSectionChange }: ExperienceProps) {
       <pointLight position={[-10, 10, -10]} intensity={0.5} color="#4a90e2" />
 
       {/* Física con Rapier */}
-      <Physics gravity={[0, -9.81, 0]}>
+      <Physics gravity={[0, -90, 0]}>
         {/* Entorno (base de tiles) */}
         <Environment />
         

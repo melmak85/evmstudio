@@ -11,7 +11,9 @@ import { ZONES, SectionType } from "@/types/zones";
 // Constantes de movimiento
 const SPEED = 5;
 const JUMP_FORCE = 8;
-const JUMP_ANIMATION_DURATION_MS = 2400;
+const JUMP_HORIZONTAL_IMPULSE = 5;
+const JUMP_MIN_DURATION_MS = 1000;
+const JUMP_MAX_DURATION_MS = 1500;
 const ISO_ROTATION_Y = Math.PI / 4; // 45 grados para vista isométrica
 const MODEL_VISUAL_OFFSET_Y = -0.8;
 
@@ -39,10 +41,7 @@ export default function PlayerCharacter({ onSectionChange }: PlayerCharacterProp
 
     const pos = rigidBodyRef.current.translation();
     const vel = rigidBodyRef.current.linvel();
-    const velX = vel.x;
     const velY = vel.y;
-    const velZ = vel.z;
-    const horizontalSpeed = Math.hypot(velX, velZ);
     
     let forward = 0;
     let sideways = 0;
@@ -59,7 +58,17 @@ export default function PlayerCharacter({ onSectionChange }: PlayerCharacterProp
       const now = Date.now();
       // Evitar doble salto (cooldown de 500ms)
       if (now - lastSpacePress.current > 500 && now - lastJumpEndRef.current > 3000) {
-        rigidBodyRef.current.applyImpulse({ x: 0, y: JUMP_FORCE, z: 0 }, true);
+        const jumpImpulse = { x: 0, y: JUMP_FORCE, z: 0 };
+
+        const intentDirection = new THREE.Vector3(sideways, 0, forward);
+        if (intentDirection.lengthSq() > 0) {
+          intentDirection.normalize();
+          intentDirection.applyAxisAngle(new THREE.Vector3(0, 1, 0), ISO_ROTATION_Y);
+          jumpImpulse.x = intentDirection.x * JUMP_HORIZONTAL_IMPULSE;
+          jumpImpulse.z = intentDirection.z * JUMP_HORIZONTAL_IMPULSE;
+        }
+
+        rigidBodyRef.current.applyImpulse(jumpImpulse, true);
         setCurrentAnimation("jump");
         setIsJumping(true);
         hasLandedRef.current = false;
@@ -72,18 +81,26 @@ export default function PlayerCharacter({ onSectionChange }: PlayerCharacterProp
       hasLandedRef.current = false;
     }
 
-    const jumpElapsed =
-      lastJumpStartRef.current > 0 ? Date.now() - lastJumpStartRef.current : 0;
-    if (
-      isJumping &&
-      isGrounded &&
-      Math.abs(velY) < 0.15 &&
-      jumpElapsed >= JUMP_ANIMATION_DURATION_MS
-    ) {
-      setIsJumping(false);
-      hasLandedRef.current = true;
-      lastJumpEndRef.current = Date.now();
-      lastJumpStartRef.current = 0;
+    if (isJumping) {
+      const now = Date.now();
+      const jumpElapsed =
+        lastJumpStartRef.current > 0 ? now - lastJumpStartRef.current : 0;
+
+      if (
+        isGrounded &&
+        Math.abs(velY) < 0.15 &&
+        jumpElapsed >= JUMP_MIN_DURATION_MS
+      ) {
+        setIsJumping(false);
+        hasLandedRef.current = true;
+        lastJumpEndRef.current = now;
+        lastJumpStartRef.current = 0;
+      } else if (jumpElapsed >= JUMP_MAX_DURATION_MS) {
+        setIsJumping(false);
+        hasLandedRef.current = true;
+        lastJumpEndRef.current = now;
+        lastJumpStartRef.current = 0;
+      }
     }
 
     // 4. Calcular dirección cruda (relativa a la pantalla)
@@ -149,7 +166,7 @@ export default function PlayerCharacter({ onSectionChange }: PlayerCharacterProp
       mass={1}
       position={[0, 1, 0]}
       enabledRotations={[false, false, false]} // Evitar que el personaje se voltee
-      linearDamping={0.5}
+      linearDamping={0.2}
       angularDamping={0.5}
     >
       {/* Modelo del avatar con animaciones */}

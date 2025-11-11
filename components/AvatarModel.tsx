@@ -146,10 +146,7 @@ export default function AvatarModel({
       if (name.toLowerCase().startsWith("jump")) {
         nextAction.setLoop(LoopOnce, 1);
         nextAction.clampWhenFinished = true;
-        const clipDuration = nextAction.getClip().duration;
-        const desiredDuration = 2.4;
-        nextAction.timeScale =
-          clipDuration > 0 ? clipDuration / desiredDuration : 1;
+        nextAction.timeScale = 1;
         nextAction.fadeIn(0.05);
       } else {
         nextAction.setLoop(LoopRepeat, Infinity);
