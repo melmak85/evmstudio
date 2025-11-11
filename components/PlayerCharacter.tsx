@@ -11,6 +11,7 @@ import { ZONES, SectionType } from "@/types/zones";
 // Constantes de movimiento
 const SPEED = 5;
 const JUMP_FORCE = 8;
+const JUMP_ANIMATION_DURATION_MS = 2400;
 const ISO_ROTATION_Y = Math.PI / 4; // 45 grados para vista isométrica
 const MODEL_VISUAL_OFFSET_Y = -0.8;
 
@@ -31,6 +32,7 @@ export default function PlayerCharacter({ onSectionChange }: PlayerCharacterProp
   const hasLandedRef = useRef(false);
 
   const lastJumpEndRef = useRef(0);
+  const lastJumpStartRef = useRef(0);
 
   useFrame((_, delta) => {
     if (!rigidBodyRef.current) return;
@@ -62,6 +64,7 @@ export default function PlayerCharacter({ onSectionChange }: PlayerCharacterProp
         setIsJumping(true);
         hasLandedRef.current = false;
         lastSpacePress.current = now;
+        lastJumpStartRef.current = now;
       }
     }
     
@@ -69,10 +72,18 @@ export default function PlayerCharacter({ onSectionChange }: PlayerCharacterProp
       hasLandedRef.current = false;
     }
 
-    if (isJumping && isGrounded && Math.abs(velY) < 0.15) {
+    const jumpElapsed =
+      lastJumpStartRef.current > 0 ? Date.now() - lastJumpStartRef.current : 0;
+    if (
+      isJumping &&
+      isGrounded &&
+      Math.abs(velY) < 0.15 &&
+      jumpElapsed >= JUMP_ANIMATION_DURATION_MS
+    ) {
       setIsJumping(false);
       hasLandedRef.current = true;
       lastJumpEndRef.current = Date.now();
+      lastJumpStartRef.current = 0;
     }
 
     // 4. Calcular dirección cruda (relativa a la pantalla)
